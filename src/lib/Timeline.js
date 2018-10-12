@@ -470,6 +470,7 @@ export default class ReactCalendarTimeline extends Component {
       visibleTimeEnd,
       width
     )
+    console.log('hello!', groupHeights)
 
     this.setState({ dimensionItems, height, groupHeights, groupTops })
   }
