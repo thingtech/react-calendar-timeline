@@ -1,6 +1,13 @@
 import moment from 'moment'
 import { _get } from './generic'
 
+/**
+ * Calculate the ms / pixel ratio of the timeline state
+ * @param {number} canvasTimeStart
+ * @param {number} canvasTimeEnd
+ * @param {number} canvasWidth
+ * @returns {number}
+ */
 export function coordinateToTimeRatio(
   canvasTimeStart,
   canvasTimeEnd,
@@ -9,6 +16,15 @@ export function coordinateToTimeRatio(
   return (canvasTimeEnd - canvasTimeStart) / canvasWidth
 }
 
+/**
+ * For a given time, calculate the pixel position given timeline state
+ * (timeline width in px, canvas time range)
+ * @param {number} canvasTimeStart
+ * @param {number} canvasTimeEnd
+ * @param {number} canvasWidth
+ * @param {number} time
+ * @returns {number}
+ */
 export function calculateXPositionForTime(
   canvasTimeStart,
   canvasTimeEnd,
@@ -19,6 +35,28 @@ export function calculateXPositionForTime(
   const timeOffset = time - canvasTimeStart
 
   return timeOffset * widthToZoomRatio
+}
+
+/**
+ * For a given x position (leftOffset) in pixels, calculate time based on
+ * timeline state (timeline width in px, canvas time range)
+ * @param {number} canvasTimeStart
+ * @param {number} canvasTimeEnd
+ * @param {number} canvasWidth
+ * @param {number} leftOffset
+ * @returns {number}
+ */
+export function calculateTimeForXPosition(
+  canvasTimeStart,
+  canvasTimeEnd,
+  canvasWidth,
+  leftOffset
+) {
+  const timeToPxRatio = (canvasTimeEnd - canvasTimeStart) / canvasWidth
+
+  const timeFromCanvasTimeStart = timeToPxRatio * leftOffset
+
+  return timeFromCanvasTimeStart + canvasTimeStart
 }
 
 export function iterateTimes(start, end, unit, timeSteps, callback) {
@@ -55,7 +93,7 @@ export const minCellWidth = 17
 
 export function getMinUnit(zoom, width, timeSteps) {
   // for supporting weeks, its important to remember that each of these
-  // units has a national progression to the other. i.e. a year is 12 months
+  // units has a natural progression to the other. i.e. a year is 12 months
   // a month is 24 days, a day is 24 hours.
   // with weeks this isnt the case so weeks needs to be handled specially
   let timeDividers = {
@@ -124,7 +162,6 @@ export function calculateDimensions({
   canvasTimeStart,
   canvasTimeEnd,
   canvasWidth,
-  dragSnap,
   dragTime,
   resizingEdge,
   resizeTime
@@ -134,31 +171,23 @@ export function calculateDimensions({
   const itemEnd =
     isResizing && resizingEdge === 'right' ? resizeTime : itemTimeEnd
 
-  let x = isDragging ? dragTime : itemStart
+  const itemTimeRange = itemEnd - itemStart
 
-  let w = Math.max(itemEnd - itemStart, dragSnap)
-
-  let collisionX = itemStart
-  let collisionW = w
-
-  if (isDragging) {
-    if (itemTimeStart >= dragTime) {
-      collisionX = dragTime
-      collisionW = Math.max(itemTimeEnd - dragTime, dragSnap)
-    } else {
-      collisionW = Math.max(dragTime - itemTimeStart + w, dragSnap)
-    }
-  }
+  let newItemStart = isDragging ? dragTime : itemStart
 
   const ratio =
     1 / coordinateToTimeRatio(canvasTimeStart, canvasTimeEnd, canvasWidth)
 
+  // restrict startTime and endTime to be bounded by canvasTimeStart and canasTimeEnd
+  const effectiveStartTime = Math.max(itemStart, canvasTimeStart)
+  const effectiveEndTime = Math.min(itemEnd, canvasTimeEnd)
+  const itemWidth = (effectiveEndTime - effectiveStartTime) * ratio
+
   const dimensions = {
-    left: (x - canvasTimeStart) * ratio,
-    width: Math.max(w * ratio, 3),
-    collisionLeft: collisionX,
-    originalLeft: itemTimeStart,
-    collisionWidth: collisionW
+    left: Math.max(newItemStart - canvasTimeStart, 0) * ratio,
+    width: Math.max(itemWidth, 3),
+    collisionLeft: newItemStart,
+    collisionWidth: itemTimeRange
   }
 
   return dimensions
@@ -218,23 +247,19 @@ export function collision(a, b, lineHeight, collisionPadding = EPSILON) {
   )
 }
 
-export function stack(items, groupOrders, lineHeight, headerHeight, force) {
+export function stack(items, groupOrders, lineHeight, groups) {
   var i, iMax
-  var totalHeight = headerHeight
+  var k = 0
+  var totalHeight = 0
 
   var groupHeights = []
   var groupTops = []
 
   var groupedItems = getGroupedItems(items, groupOrders)
 
-  if (force) {
-    // reset top position of all items
-    for (i = 0, iMax = items.length; i < iMax; i++) {
-      items[i].dimensions.top = null
-    }
-  }
-
   groupedItems.forEach(function(group) {
+    var groupVal = groups[k++];
+
     // calculate new, non-overlapping positions
     groupTops.push(totalHeight)
 
@@ -276,8 +301,13 @@ export function stack(items, groupOrders, lineHeight, headerHeight, force) {
       }
     }
 
-    groupHeights.push(Math.max(groupHeight + verticalMargin, lineHeight))
-    totalHeight += Math.max(groupHeight + verticalMargin, lineHeight)
+    if (groupVal.height) {
+      groupHeights.push(groupVal.height)
+      totalHeight += groupVal.height
+    } else {
+      groupHeights.push(Math.max(groupHeight + verticalMargin, lineHeight))
+      totalHeight += Math.max(groupHeight + verticalMargin, lineHeight)
+    }
   })
   return {
     height: totalHeight,
@@ -286,24 +316,19 @@ export function stack(items, groupOrders, lineHeight, headerHeight, force) {
   }
 }
 
-export function nostack(items, groupOrders, lineHeight, headerHeight, force) {
-  var i, iMax
+export function nostack(items, groupOrders, lineHeight, groups) {
+  var i, j=0, iMax
 
-  var totalHeight = headerHeight
+  var totalHeight = 0
 
   var groupHeights = []
   var groupTops = []
 
   var groupedItems = getGroupedItems(items, groupOrders)
 
-  if (force) {
-    // reset top position of all items
-    for (i = 0, iMax = items.length; i < iMax; i++) {
-      items[i].dimensions.top = null
-    }
-  }
-
   groupedItems.forEach(function(group) {
+    var groupVal = groups[j++];
+
     // calculate new, non-overlapping positions
     groupTops.push(totalHeight)
 
@@ -318,12 +343,175 @@ export function nostack(items, groupOrders, lineHeight, headerHeight, force) {
       }
     }
 
-    groupHeights.push(Math.max(groupHeight, lineHeight))
-    totalHeight += Math.max(groupHeight, lineHeight)
+    if (groupVal.height) {
+      groupHeights.push(groupVal.height);
+      totalHeight += groupVal.height;
+    } else {
+      groupHeights.push(Math.max(groupHeight, lineHeight))
+      totalHeight += Math.max(groupHeight, lineHeight)
+    }
   })
   return {
     height: totalHeight,
     groupHeights,
     groupTops
   }
+}
+
+/**
+ * Stack the items that will be visible
+ * within the canvas area
+ * @param {item[]} items 
+ * @param {group[]} groups 
+ * @param {number} canvasTimeStart 
+ * @param {number} visibleTimeStart 
+ * @param {number} visibleTimeEnd 
+ * @param {number} width 
+ * @param {*} props 
+ * @param {*} state 
+ */
+export function stackItems(
+items,
+groups,
+canvasTimeStart,
+visibleTimeStart,
+visibleTimeEnd,
+width,
+props,
+state
+) {
+  // if there are no groups return an empty array of dimensions
+  if (groups.length === 0) {
+    return {
+      dimensionItems: [],
+      height: 0,
+      groupHeights: [],
+      groupTops: []
+    }
+  }
+
+  const { keys, lineHeight, stackItems, itemHeightRatio } = props
+  const {
+    draggingItem,
+    dragTime,
+    resizingItem,
+    resizingEdge,
+    resizeTime,
+    newGroupOrder
+  } = state
+  const zoom = visibleTimeEnd - visibleTimeStart
+  const canvasTimeEnd = canvasTimeStart + zoom * 3
+  const canvasWidth = width * 3
+
+  // Find items that fit within canvasTimeStart and canvasTimeEnd
+  // this is used when calculating the number of 'lines' each group
+  // will use.
+  const visibleItems = getVisibleItems(
+    items,
+    canvasTimeStart,
+    canvasTimeEnd,
+    keys
+  )
+
+  // Get the order of groups based on their id key
+  const groupOrders = getGroupOrders(groups, keys)
+
+
+  let dimensionItems = visibleItems.reduce((memo, item) => {
+    const itemId = _get(item, keys.itemIdKey)
+    const isDragging = itemId === draggingItem
+    const isResizing = itemId === resizingItem
+
+
+    let dimension = calculateDimensions({
+      itemTimeStart: _get(item, keys.itemTimeStartKey),
+      itemTimeEnd: _get(item, keys.itemTimeEndKey),
+      isDragging,
+      isResizing,
+      canvasTimeStart,
+      canvasTimeEnd,
+      canvasWidth,
+      dragTime,
+      resizingEdge,
+      resizeTime
+    })
+
+    if (dimension) {
+      dimension.top = null
+      dimension.order = isDragging
+        ? newGroupOrder
+        : groupOrders[_get(item, keys.itemGroupKey)]
+      dimension.stack = !item.isOverlay
+      dimension.height = lineHeight * itemHeightRatio
+      dimension.isDragging = isDragging
+
+      memo.push({
+        id: itemId,
+        dimensions: dimension
+      })
+    }
+
+    return memo
+  }, [])
+
+  const stackingMethod = stackItems ? stack : nostack
+
+  // Get a new array of groupOrders holding the stacked items
+  const { height, groupHeights, groupTops } = stackingMethod(
+    dimensionItems,
+    groupOrders,
+    lineHeight,
+    groups
+  )
+
+  return { dimensionItems, height, groupHeights, groupTops }
+}
+
+/**
+ * Get the the canvas area for a given visible time
+ * Will shift the start/end of the canvas if the visible time
+ * does not fit within the existing
+ * @param {number} visibleTimeStart 
+ * @param {number} visibleTimeEnd 
+ * @param {boolean} forceUpdateDimensions 
+ * @param {*} items 
+ * @param {*} groups 
+ * @param {*} props 
+ * @param {*} state 
+ */
+export function calculateScrollCanvas(
+visibleTimeStart,
+visibleTimeEnd,
+forceUpdateDimensions,
+items,
+groups,
+props,
+state) {
+  const oldCanvasTimeStart = state.canvasTimeStart
+  const oldZoom = state.visibleTimeEnd - state.visibleTimeStart
+
+  const newState = { visibleTimeStart, visibleTimeEnd }
+
+  // Check if the current canvas covers the new times
+  const canKeepCanvas =
+    visibleTimeStart >= oldCanvasTimeStart + oldZoom * 0.5 &&
+    visibleTimeStart <= oldCanvasTimeStart + oldZoom * 1.5 &&
+    visibleTimeEnd >= oldCanvasTimeStart + oldZoom * 1.5 &&
+    visibleTimeEnd <= oldCanvasTimeStart + oldZoom * 2.5
+  
+  if (!canKeepCanvas || forceUpdateDimensions) {
+    newState.canvasTimeStart = visibleTimeStart - (visibleTimeEnd - visibleTimeStart)
+    // The canvas cannot be kept, so calculate the new items position
+    Object.assign(newState, stackItems(
+      items,
+      groups,
+      newState.canvasTimeStart,
+      visibleTimeStart,
+      visibleTimeEnd,
+      state.width,
+      props,
+      state
+    ))
+  }
+  return newState
 }

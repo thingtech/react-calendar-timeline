@@ -1,16 +1,5 @@
-const ELEMENT_NODE = 1
-
-export function hasSomeParentTheClass(element, wantedClass) {
-  if (element.nodeType !== ELEMENT_NODE) return false
-
-  const actualClasses = element.getAttribute('class')
-
-  if (actualClasses && actualClasses.split(' ').indexOf(wantedClass) !== -1)
-    return true
-  return hasSomeParentTheClass(element.parentNode, wantedClass)
-}
-
 // TODO: can we use getBoundingClientRect instead??
+// last place this is used is in "handleWheel" in ScrollElement
 export function getParentPosition(element) {
   var xPosition = 0
   var yPosition = 0

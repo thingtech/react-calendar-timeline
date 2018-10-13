@@ -56,7 +56,6 @@ export default class App extends Component {
           groups={groups}
           items={items}
           keys={keys}
-          fixedHeader="sticky"
           sidebarWidth={150}
           sidebarContent={<div>Above The Left</div>}
           rightSidebarWidth={150}
@@ -68,7 +67,6 @@ export default class App extends Component {
           itemTouchSendsClick={false}
           stackItems
           itemHeightRatio={0.75}
-          showCursorLine
           resizeDetector={containerResizeDetector}
           defaultTimeStart={defaultTimeStart}
           defaultTimeEnd={defaultTimeEnd}
@@ -96,7 +94,7 @@ export default class App extends Component {
         />
         <br />
         <br />
-        Here's another calendar, but this one has <code>stickyOffset</code> set
+        Here is another calendar, but this one has <code>stickyOffset</code> set
         to <code>100</code>, meaning that the header will stick 100px from the
         top. This is useful for example if you already have a sticky navbar.
         <br />
@@ -105,7 +103,6 @@ export default class App extends Component {
           groups={groups}
           items={items}
           keys={keys}
-          fixedHeader="sticky"
           stickyOffset={100}
           sidebarWidth={150}
           sidebarContent={<div>Above The Left</div>}
@@ -118,7 +115,6 @@ export default class App extends Component {
           itemTouchSendsClick={false}
           stackItems
           itemHeightRatio={0.75}
-          showCursorLine
           resizeDetector={containerResizeDetector}
           defaultTimeStart={defaultTimeStart}
           defaultTimeEnd={defaultTimeEnd}

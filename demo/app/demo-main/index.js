@@ -1,8 +1,13 @@
+/* eslint-disable no-console */
 import React, { Component } from 'react'
 import moment from 'moment'
 
-import Timeline from 'react-calendar-timeline'
-// import containerResizeDetector from 'react-calendar-timeline/lib/resize-detector/container'
+import Timeline, {
+  TimelineMarkers,
+  TodayMarker,
+  CustomMarker,
+  CursorMarker
+} from 'react-calendar-timeline'
 
 import generateFakeData from '../generate-fake-data'
 
@@ -46,11 +51,15 @@ export default class App extends Component {
     }
   }
 
-  handleCanvasClick = (groupId, time, event) => {
+  handleCanvasClick = (groupId, time) => {
     console.log('Canvas clicked', groupId, moment(time).format())
   }
 
-  handleCanvasContextMenu = (group, time, e) => {
+  handleCanvasDoubleClick = (groupId, time) => {
+    console.log('Canvas double clicked', groupId, moment(time).format())
+  }
+
+  handleCanvasContextMenu = (group, time) => {
     console.log('Canvas context menu', group, moment(time).format())
   }
 
@@ -122,7 +131,7 @@ export default class App extends Component {
     }
   }
 
-  moveResizeValidator = (action, item, time, resizeEdge) => {
+  moveResizeValidator = (action, item, time) => {
     if (time < new Date().getTime()) {
       var newTime =
         Math.ceil(new Date().getTime() / (15 * 60 * 1000)) * (15 * 60 * 1000)
@@ -132,23 +141,6 @@ export default class App extends Component {
     return time
   }
 
-  // itemRenderer = ({ item }) => {
-  //   return (
-  //     <div className='custom-item'>
-  //       <span className='title'>{item.title}</span>
-  //       <p className='tip'>{item.itemProps['data-tip']}</p>
-  //     </div>
-  //   )
-  // }
-
-  // groupRenderer = ({ group }) => {
-  //   return (
-  //     <div className='custom-group'>
-  //       {group.title}
-  //     </div>
-  //   )
-  // }
-
   render() {
     const { groups, items, defaultTimeStart, defaultTimeEnd } = this.state
 
@@ -157,12 +149,8 @@ export default class App extends Component {
         groups={groups}
         items={items}
         keys={keys}
-        fixedHeader="fixed"
         sidebarWidth={150}
         sidebarContent={<div>Above The Left</div>}
-        // rightSidebarWidth={150}
-        // rightSidebarContent={<div>Above The Right</div>}
-
         canMove
         canResize="right"
         canSelect
@@ -170,15 +158,10 @@ export default class App extends Component {
         itemTouchSendsClick={false}
         stackItems
         itemHeightRatio={0.75}
-        showCursorLine
-        // resizeDetector={containerResizeDetector}
-
         defaultTimeStart={defaultTimeStart}
         defaultTimeEnd={defaultTimeEnd}
-        // itemRenderer={this.itemRenderer}
-        // groupRenderer={this.groupRenderer}
-
         onCanvasClick={this.handleCanvasClick}
+        onCanvasDoubleClick={this.handleCanvasDoubleClick}
         onCanvasContextMenu={this.handleCanvasContextMenu}
         onItemClick={this.handleItemClick}
         onItemSelect={this.handleItemSelect}
@@ -188,7 +171,30 @@ export default class App extends Component {
         onItemDoubleClick={this.handleItemDoubleClick}
         onTimeChange={this.handleTimeChange}
         moveResizeValidator={this.moveResizeValidator}
-      />
+      >
+        <TimelineMarkers>
+          <TodayMarker />
+          <CustomMarker
+            date={
+              moment()
+                .startOf('day')
+                .valueOf() +
+              1000 * 60 * 60 * 2
+            }
+          />
+          <CustomMarker
+            date={moment()
+              .add(3, 'day')
+              .valueOf()}
+          >
+            {({ styles }) => {
+              const newStyles = { ...styles, backgroundColor: 'blue' }
+              return <div style={newStyles} />
+            }}
+          </CustomMarker>
+          <CursorMarker />
+        </TimelineMarkers>
+      </Timeline>
     )
   }
 }

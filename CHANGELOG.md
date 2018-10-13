@@ -7,10 +7,157 @@ and this project adheres (more or less) to [Semantic Versioning](http://semver.o
 
 ## Unreleased
 
+### 0.20.0
+
+### improvements
+* eliminate extra renders on every scroll - #357 [acemac](https://github.com/acemac)
+
+### Fixed
+* When the `date` prop on a `CustomMarker` changes the marker will now move on the timeline - #421 [kevinmanncito](https://github.com/kevinmanncito) [ilaiwi](https://github.com/ilaiwi)
+* Header has a bounce effect - #311 [acemac](https://github.com/acemac)
+
+####dev
+
+* update to `react-testing-library` version 5
+* remove deprecated `toBeInDom`
+
+
+
+### 0.19.0
+
 ### Added
 
+* ability to set classes for timeline columns depending on its time - #364
+* ability to add custom classes and custom heights to the timeline rows - #367
+* add `scrollRef` to allow for programmatically scrolling timeline - #372
+
+### Breaking
+
+* rework item renderer to render the whole item using render prop and prop getters - #289
+
+### 0.18.2
+
+### Fixed
+
+* `onCanvasClick` not fired - #383
+* cursor marker disappear while hovering over item - #378
+
+### 0.18.1
+
+### Fixed
+
+* Date passed to CursorMarker child is wrong - #379
+* groupRenderer doesnt work for right sidebar - #377
+
+### 0.18.0
+
+### Fixed
+
+* Timeline now respects changes to `headerLabelFormats` and `subHeaderLabelFormats` - #362
+
+### Added
+
+* timeline markers - user can have more control over markers that are rendered on the timeline. See `TimelineMarkers` section of README for documentation - #327
+
+### Breaking
+
+* Removed support for React 15 and lower.  This is due to the fact that 16+ supports returning arrays from render, something that the TimelineMarker feature relies on.
+* removed `showCursorLine` prop in favor of using the `CursorMarker` component. See `TimelineMarkers` section of README for documentation.
+
+```diff
+import Timeline,
++ {TimelineMarkers, CursorMarker}
+from 'react-calendar-timeline'
+
+<Timeline
+- showCursorLine
+
+- />
++ >
+
++ <TimelineMarkers>
++  <CursorMarker />
++ </TimelineMarkers>
+
++ </Timeline>
+```
+
+### 0.17.3
+
+### Added
+* fix issue with single row header - #359
+
+### 0.17.2
+
+### Added
+
+* support passing `style` prop from item - #347
+* `selected` is provided to `itemRenderer` - #348
+* simplify logic for calculate dimensions and prevent item width and left properties from being unbounded - (refactoring)
+
+### 0.17.1
+
+### Added
+
+* pass canvasTimeStart/End via timelineContext to the itemRenderer prop
+
+### 0.17.0
+
+### Breaking
+
+* throw more descriptive error if visibleTimeStart/End and defaultTimeStart/End are not passed as props. Timeline no longer calculates visibleTime start and end from items. Removed `onTimeInit` prop as it no longer serves a purpose. - #299
+* `interactjs` is a peerDependency (wasn't previously). Upped version to 1.3.4 to fix issue #297
+
+### Fixed
+
+* fix for issue where NaN is returned in onItemMove if the startTime is not unix timestamp #300
+
+### 0.16.3
+
+### Fixed
+
+* tap on canvas now dispatches `onCanvasClicked` - #168
+* regression bug related to touch zoom
+* code cleanup and refactoring around group rows
+
+### 0.16.2
+
+### Fixed
+
+* clicking on canvas when item is selected now calls `onCanvasClicked` - #312
+
+### 0.16.1
+
+### Added
+
+* added `stickyHeader` to disable/enable timeline header sticking on scroll.
 * removed `fullUpdate` prop and functionality. Labels rely on `position: sticky` to show for items that start before `visibleTimeStart`. This (should) greatly improve scroll performance.
 * removed extraneous css such as `text-align: center` on `.rct-item`, `.rct-item-overflow` to simplify the dom structure of `Item.js`
+* added `headerRef` callback to receive a reference to the header element. Due to the change in how the header positioning is implemented (i.e. using `position: sticky`), there is a need to use a polyfill in [certain browsers](https://caniuse.com/#feat=css-sticky) that don't support `position: sticky`. With a reference to the header dom element, you can use a polyfill to apply sticky behavior.
+* `minimumWidthForItemContentVisibility` prop to control at what width inner item content is rendered.
+
+### Breaking
+
+* removed `fixedHeader` prop in favor of using `position: sticky` by default
+* removed import of stylesheets in library code, put onus on user to handle this stylesheet
+
+## 0.15.12
+
+### Fixed
+
+* Shift + Scroll via mouse wheel scrolls canvas horizontally - #281
+
+## 0.15.11
+
+### Fixed
+
+* removed `preventDefault` call in item double click handler - #277
+
+## 0.15.10
+
+### Fixed
+
+* fix issue with time report with onItem\* callbacks for browsers that don't support `x` property in rect object - #266
 
 ## 0.15.9
 

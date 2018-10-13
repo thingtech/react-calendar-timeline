@@ -7,16 +7,10 @@ class ScrollElement extends Component {
     children: PropTypes.element.isRequired,
     width: PropTypes.number.isRequired,
     height: PropTypes.number.isRequired,
-    clickTolerance: PropTypes.number.isRequired,
     traditionalZoom: PropTypes.bool.isRequired,
     scrollRef: PropTypes.func.isRequired,
     isInteractingWithItem: PropTypes.bool.isRequired,
-    onMouseEnter: PropTypes.func.isRequired,
-    onMouseMove: PropTypes.func.isRequired,
-    onMouseLeave: PropTypes.func.isRequired,
-    onContextMenu: PropTypes.func.isRequired,
-    onDoubleClick: PropTypes.func.isRequired,
-    onClick: PropTypes.func.isRequired,
+    onZoom: PropTypes.func.isRequired,
     onWheelZoom: PropTypes.func.isRequired,
     onScroll: PropTypes.func.isRequired
   }
@@ -33,21 +27,8 @@ class ScrollElement extends Component {
     this.props.scrollRef(el)
   }
 
-  // TODO: fix this where this is called when scrollLeft is set
   handleScroll = () => {
-    const { width } = this.props
-    const scrollComponent = this.scrollComponent
-
-    const scrollX = scrollComponent.scrollLeft
-
-    // move the virtual canvas if needed
-    // if scrollX is less...i dont know how to explain the logic here
-    if (scrollX < width * 0.5) {
-      scrollComponent.scrollLeft += width
-    }
-    if (scrollX > width * 1.5) {
-      scrollComponent.scrollLeft -= width
-    }
+    const scrollX = this.scrollComponent.scrollLeft
     this.props.onScroll(scrollX)
   }
 
@@ -66,8 +47,8 @@ class ScrollElement extends Component {
       // convert vertical zoom to horiziontal
       this.props.onWheelZoom(speed, xPosition, e.deltaY)
     } else if (e.shiftKey) {
-      const scrollComponent = this.scrollComponent
-      scrollComponent.scrollLeft += e.deltaY
+      // shift+scroll event from a touchpad has deltaY property populated; shift+scroll event from a mouse has deltaX
+      this.scrollComponent.scrollLeft += e.deltaY || e.deltaX
 
       // no modifier pressed? we prevented the default event, so scroll or zoom as needed
     } else {
@@ -89,7 +70,6 @@ class ScrollElement extends Component {
   }
 
   handleMouseDown = e => {
-    // TODO: what about header click
     if (e.button === 0) {
       this.dragStartPosition = e.pageX
       this.dragLastPosition = e.pageX
@@ -100,7 +80,7 @@ class ScrollElement extends Component {
   }
 
   handleMouseMove = e => {
-    this.props.onMouseMove(e)
+    // this.props.onMouseMove(e)
     //why is interacting with item important?
     if (this.state.isDragging && !this.props.isInteractingWithItem) {
       this.scrollComponent.scrollLeft += this.dragLastPosition - e.pageX
@@ -108,13 +88,7 @@ class ScrollElement extends Component {
     }
   }
 
-  handleMouseUp = e => {
-    if (
-      Math.abs(this.dragStartPosition - e.pageX) <= this.props.clickTolerance
-    ) {
-      this.props.onClick(e)
-    }
-
+  handleMouseUp = () => {
     this.dragStartPosition = null
     this.dragLastPosition = null
 
@@ -123,8 +97,8 @@ class ScrollElement extends Component {
     })
   }
 
-  handleMouseLeave = e => {
-    this.props.onMouseLeave(e)
+  handleMouseLeave = () => {
+    // this.props.onMouseLeave(e)
     this.dragStartPosition = null
     this.dragLastPosition = null
     this.setState({
@@ -154,43 +128,31 @@ class ScrollElement extends Component {
   }
 
   handleTouchMove = e => {
-    const { isInteractingWithItem, width } = this.props
+    const { isInteractingWithItem, width, onZoom } = this.props
     if (isInteractingWithItem) {
       e.preventDefault()
       return
     }
     if (this.lastTouchDistance && e.touches.length === 2) {
       e.preventDefault()
-
       let touchDistance = Math.abs(e.touches[0].screenX - e.touches[1].screenX)
-
       let parentPosition = getParentPosition(e.currentTarget)
       let xPosition =
         (e.touches[0].screenX + e.touches[1].screenX) / 2 - parentPosition.x
-
       if (touchDistance !== 0 && this.lastTouchDistance !== 0) {
-        this.changeZoom(
-          this.lastTouchDistance / touchDistance,
-          xPosition / width
-        )
+        onZoom(this.lastTouchDistance / touchDistance, xPosition / width)
         this.lastTouchDistance = touchDistance
       }
     } else if (this.lastSingleTouch && e.touches.length === 1) {
       e.preventDefault()
-
       let x = e.touches[0].clientX
       let y = e.touches[0].clientY
-
       let deltaX = x - this.lastSingleTouch.x
-
       let deltaX0 = x - this.singleTouchStart.x
       let deltaY0 = y - this.singleTouchStart.y
-
       this.lastSingleTouch = { x: x, y: y }
-
       let moveX = Math.abs(deltaX0) * 3 > Math.abs(deltaY0)
       let moveY = Math.abs(deltaY0) * 3 > Math.abs(deltaX0)
-
       if (deltaX !== 0 && moveX) {
         this.scrollComponent.scrollLeft -= deltaX
       }
@@ -203,41 +165,31 @@ class ScrollElement extends Component {
     }
   }
 
-  handleTouchEnd = e => {
+  handleTouchEnd = () => {
     if (this.lastTouchDistance) {
-      e.preventDefault()
-
       this.lastTouchDistance = null
     }
     if (this.lastSingleTouch) {
-      e.preventDefault()
-
       this.lastSingleTouch = null
       this.singleTouchStart = null
     }
   }
 
   render() {
-    const {
-      width,
-      height,
-      children,
-      onContextMenu,
-      onDoubleClick,
-      onMouseEnter
-    } = this.props
+    const { width, height, children } = this.props
     const { isDragging } = this.state
 
     const scrollComponentStyle = {
       width: `${width}px`,
       height: `${height + 20}px`, //20px to push the scroll element down off screen...?
-      cursor: isDragging ? 'move' : 'default'
+      cursor: isDragging ? 'move' : 'default',
+      position: 'relative'
     }
 
     return (
       <div
         ref={this.refHandler}
-        data-test-id="scroll-element"
+        data-testid="scroll-element"
         className="rct-scroll"
         style={scrollComponentStyle}
         onScroll={this.handleScroll}
@@ -249,12 +201,10 @@ class ScrollElement extends Component {
         onTouchStart={this.handleTouchStart}
         onTouchMove={this.handleTouchMove}
         onTouchEnd={this.handleTouchEnd}
-        onContextMenu={onContextMenu}
-        onDoubleClick={onDoubleClick}
-        onMouseEnter={onMouseEnter}
       >
         {children}
       </div>
+
     )
   }
 }
